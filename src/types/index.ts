@@ -16,13 +16,11 @@ export interface Villa {
   title: string
   sourceUrl: string
   imageUrl: string
-  images?: string[] // Multiple images
   totalPriceGBP: number
   bedrooms: number
   bathrooms: number
   location: string
   notes: string
-  amenities?: string[]
   createdBy: string
   createdAt: Timestamp
 }

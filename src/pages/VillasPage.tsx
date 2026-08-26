@@ -10,16 +10,38 @@ import {
 } from '../hooks/useFirestore'
 import { VoteType, VOTE_WEIGHTS, MAX_BUDGET_PER_PERSON } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner'
-import VillaImportModal from '../components/VillaImportModal'
 import './VillasPage.css'
+
+interface VillaFormData {
+  title: string
+  sourceUrl: string
+  imageUrl: string
+  totalPriceGBP: string
+  bedrooms: string
+  bathrooms: string
+  location: string
+  notes: string
+}
+
+const initialFormData: VillaFormData = {
+  title: '',
+  sourceUrl: '',
+  imageUrl: '',
+  totalPriceGBP: '',
+  bedrooms: '',
+  bathrooms: '',
+  location: '',
+  notes: '',
+}
 
 function VillasPage() {
   const { user, isAdmin } = useAuth()
   const { data: villas, loading: villasLoading } = useVillas()
   const { data: votes } = useAllVotes()
   const { data: users } = useUsers()
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [expandedVilla, setExpandedVilla] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [formData, setFormData] = useState<VillaFormData>(initialFormData)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const groupSize = users.length || 17
 
@@ -50,36 +72,29 @@ function VillasPage() {
     })
   }
 
-  const handleImport = async (data: {
-    title: string
-    sourceUrl: string
-    location: string
-    totalPriceGBP: string
-    bedrooms: string
-    bathrooms: string
-    images: string[]
-    amenities: string[]
-    notes: string
-  }) => {
+  const handleAddVilla = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!user) return
 
+    setIsSubmitting(true)
     try {
       await addVilla({
-        title: data.title,
-        sourceUrl: data.sourceUrl,
-        imageUrl: data.images[0] || '',
-        images: data.images,
-        totalPriceGBP: parseInt(data.totalPriceGBP) || 0,
-        bedrooms: parseInt(data.bedrooms) || 0,
-        bathrooms: parseInt(data.bathrooms) || 0,
-        location: data.location,
-        notes: data.notes,
-        amenities: data.amenities,
+        title: formData.title,
+        sourceUrl: formData.sourceUrl,
+        imageUrl: formData.imageUrl,
+        totalPriceGBP: parseInt(formData.totalPriceGBP) || 0,
+        bedrooms: parseInt(formData.bedrooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        location: formData.location,
+        notes: formData.notes,
         createdBy: user.uid,
       })
-      setShowImportModal(false)
+      setFormData(initialFormData)
+      setShowModal(false)
     } catch (error) {
       console.error('Failed to add villa:', error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -97,7 +112,7 @@ function VillasPage() {
           <p>Vote on your favorite villas • Max budget: £{MAX_BUDGET_PER_PERSON}/person</p>
         </div>
         {isAdmin && (
-          <button className="btn btn-primary" onClick={() => setShowImportModal(true)}>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             + Add Villa
           </button>
         )}
@@ -114,23 +129,18 @@ function VillasPage() {
             const costPerPerson = Math.ceil(villa.totalPriceGBP / groupSize)
             const isUnderBudget = costPerPerson <= MAX_BUDGET_PER_PERSON
             const voteData = getVillaVoteData(villa.id)
-            const isExpanded = expandedVilla === villa.id
-            const displayImage = villa.imageUrl || villa.images?.[0] || 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Image'
 
             return (
-              <div key={villa.id} className={`villa-card ${isExpanded ? 'expanded' : ''}`}>
+              <div key={villa.id} className="villa-card">
                 <div className="villa-image-container">
                   <img
-                    src={displayImage}
+                    src={villa.imageUrl || 'https://placehold.co/400x200/e2e8f0/64748b?text=No+Image'}
                     alt={villa.title}
                     className="villa-image"
                   />
                   <span className={`villa-badge ${isUnderBudget ? 'under-budget' : 'over-budget'}`}>
                     {isUnderBudget ? '✓ Under Budget' : '⚠ Over Budget'}
                   </span>
-                  {villa.images && villa.images.length > 1 && (
-                    <span className="photo-count">📷 {villa.images.length}</span>
-                  )}
                 </div>
 
                 <div className="villa-content">
@@ -147,52 +157,12 @@ function VillasPage() {
                     <span className="per-person">£{costPerPerson}/person</span>
                   </div>
 
-                  {/* Amenities */}
-                  {villa.amenities && villa.amenities.length > 0 && (
-                    <div className="villa-amenities">
-                      {villa.amenities.slice(0, isExpanded ? undefined : 4).map((amenity) => (
-                        <span key={amenity} className="amenity-tag">{amenity}</span>
-                      ))}
-                      {!isExpanded && villa.amenities.length > 4 && (
-                        <button 
-                          className="amenity-tag more"
-                          onClick={() => setExpandedVilla(villa.id)}
-                        >
-                          +{villa.amenities.length - 4} more
-                        </button>
-                      )}
-                    </div>
-                  )}
-
                   {villa.notes && <p className="villa-notes">{villa.notes}</p>}
 
                   {villa.sourceUrl && (
                     <a href={villa.sourceUrl} target="_blank" rel="noopener noreferrer" className="villa-link">
                       View listing →
                     </a>
-                  )}
-
-                  {/* Expanded Image Gallery */}
-                  {isExpanded && villa.images && villa.images.length > 1 && (
-                    <div className="image-gallery">
-                      {villa.images.map((img, idx) => (
-                        <img 
-                          key={idx} 
-                          src={img} 
-                          alt={`${villa.title} photo ${idx + 1}`}
-                          className="gallery-image"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {isExpanded && (
-                    <button 
-                      className="btn btn-secondary btn-sm collapse-btn"
-                      onClick={() => setExpandedVilla(null)}
-                    >
-                      Show Less
-                    </button>
                   )}
 
                   <div className="voting-section">
@@ -248,12 +218,125 @@ function VillasPage() {
         </div>
       )}
 
-      {/* Import Modal */}
-      {showImportModal && (
-        <VillaImportModal
-          onClose={() => setShowImportModal(false)}
-          onImport={handleImport}
-        />
+      {/* Add Villa Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add New Villa</h2>
+            </div>
+            <form onSubmit={handleAddVilla}>
+              <div className="modal-body">
+                <div className="modal-form">
+                  <div className="form-group">
+                    <label htmlFor="title">Villa Name *</label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="e.g., Costa Brava Cliffside Villa"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="location">Location *</label>
+                    <input
+                      id="location"
+                      type="text"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                      placeholder="e.g., Costa Brava, Spain"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="totalPriceGBP">Total Price (£) *</label>
+                      <input
+                        id="totalPriceGBP"
+                        type="number"
+                        value={formData.totalPriceGBP}
+                        onChange={(e) => setFormData({ ...formData, totalPriceGBP: e.target.value })}
+                        placeholder="4900"
+                        min="0"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="bedrooms">Bedrooms *</label>
+                      <input
+                        id="bedrooms"
+                        type="number"
+                        value={formData.bedrooms}
+                        onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                        placeholder="8"
+                        min="1"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="bathrooms">Bathrooms *</label>
+                    <input
+                      id="bathrooms"
+                      type="number"
+                      value={formData.bathrooms}
+                      onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                      placeholder="6"
+                      min="1"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="sourceUrl">Listing URL</label>
+                    <input
+                      id="sourceUrl"
+                      type="url"
+                      value={formData.sourceUrl}
+                      onChange={(e) => setFormData({ ...formData, sourceUrl: e.target.value })}
+                      placeholder="https://www.airbnb.com/rooms/..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="imageUrl">Image URL</label>
+                    <input
+                      id="imageUrl"
+                      type="url"
+                      value={formData.imageUrl}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="notes">Notes</label>
+                    <input
+                      id="notes"
+                      type="text"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Includes private pool and sea view."
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding...' : 'Add Villa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )

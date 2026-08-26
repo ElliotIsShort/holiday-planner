@@ -8,15 +8,21 @@ function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { signIn, error } = useAuth()
 
+  const [localError, setLocalError] = useState<string | null>(null)
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!username || !password) return
 
     setIsSubmitting(true)
+    setLocalError(null)
     try {
+      console.log('Attempting login with username:', username)
       await signIn(username, password)
-    } catch {
-      // Error is handled in AuthContext
+      console.log('Login successful')
+    } catch (err) {
+      console.error('Login failed:', err)
+      setLocalError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setIsSubmitting(false)
     }
@@ -58,9 +64,9 @@ function LoginPage() {
             />
           </div>
 
-          {error && (
+          {(error || localError) && (
             <div className="error-message">
-              Invalid credentials. Please check your username and password.
+              {localError || 'Invalid credentials. Please check your username and password.'}
             </div>
           )}
 
