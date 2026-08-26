@@ -36,6 +36,8 @@ A web application to coordinate a 14–20 person group holiday in Spain for Summ
 - `firebase` - Authentication and Firestore database
 - `react-router-dom` - Client-side routing
 - `date-fns` - Date manipulation for availability calendar
+- `vitest` - Unit testing framework
+- `@testing-library/react` - React component testing utilities
 
 ---
 
@@ -53,9 +55,11 @@ holiday-planner/
 │   │   ├── Layout.tsx      # Main app shell with navigation header
 │   │   ├── Layout.css
 │   │   ├── LoadingSpinner.tsx
+│   │   ├── LoadingSpinner.test.tsx
 │   │   └── LoadingSpinner.css
 │   ├── config/
-│   │   └── firebase.ts     # Firebase initialization, demo mode detection
+│   │   ├── firebase.ts     # Firebase initialization, demo mode detection
+│   │   └── firebase.test.ts
 │   ├── contexts/
 │   │   └── AuthContext.tsx # Authentication state, sign in/out, user profile
 │   ├── hooks/
@@ -68,8 +72,17 @@ holiday-planner/
 │   │   └── ActivitiesPage.tsx/.css
 │   ├── styles/
 │   │   └── index.css       # Global styles, CSS variables, button/form styles
+│   ├── test/
+│   │   ├── setup.ts        # Test setup, Firebase mocks
+│   │   └── test-utils.tsx  # Custom render with providers
 │   ├── types/
-│   │   └── index.ts        # TypeScript interfaces for all data models
+│   │   ├── index.ts        # TypeScript interfaces for all data models
+│   │   └── index.test.ts
+│   ├── utils/
+│   │   ├── villa-scoring.ts      # Villa vote scoring calculations
+│   │   ├── villa-scoring.test.ts
+│   │   ├── availability.ts       # Availability heatmap calculations
+│   │   └── availability.test.ts
 │   ├── App.tsx             # Route definitions and protected routes
 │   ├── main.tsx            # React entry point with error boundary
 │   └── vite-env.d.ts       # Vite environment type definitions
@@ -78,6 +91,7 @@ holiday-planner/
 ├── firestore.rules         # Firestore security rules
 ├── package.json
 ├── tsconfig.json
+├── vitest.config.ts        # Vitest test configuration
 └── vite.config.ts          # Vite config with GitHub Pages base path
 ```
 
@@ -263,6 +277,42 @@ CSS variables defined in `src/styles/index.css`:
 - `.btn-secondary` - Outlined
 - `.btn-danger` - Red filled
 - `.btn-sm`, `.btn-lg` - Sizes
+
+---
+
+## Testing
+
+### Test Framework
+- **Vitest** - Fast unit test runner (Vite-native)
+- **@testing-library/react** - React component testing
+- **@testing-library/jest-dom** - Custom DOM matchers
+
+### Running Tests
+```bash
+npm test           # Run all tests once
+npm run test:watch # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+```
+
+### Test Structure
+Tests are co-located with source files using `.test.ts` or `.test.tsx` suffix:
+- `src/config/firebase.test.ts` - Username→email conversion, demo mode detection
+- `src/types/index.test.ts` - Vote weights, budget constants
+- `src/utils/villa-scoring.test.ts` - Villa scoring calculations
+- `src/utils/availability.test.ts` - Availability heatmap logic
+- `src/components/LoadingSpinner.test.tsx` - Component rendering
+
+### Test Setup
+- `src/test/setup.ts` - Firebase mocks, environment stubs
+- `src/test/test-utils.tsx` - Custom render with Router/Auth providers
+- `vitest.config.ts` - Test configuration
+
+### What Tests Cover
+- **Vote scoring logic** - LOVE/FINE/VETO weights, score calculation
+- **Budget calculations** - Cost per person, budget threshold checks
+- **Availability heatmap** - Date counting, heat levels, best dates
+- **Username conversion** - Synthetic email generation
+- **UI components** - LoadingSpinner rendering variants
 
 ---
 
