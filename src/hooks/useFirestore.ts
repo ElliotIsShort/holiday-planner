@@ -14,7 +14,7 @@ import {
   QueryConstraint,
 } from 'firebase/firestore'
 import { db, isDemoMode } from '../config/firebase'
-import { Villa, VillaVote, Availability, Activity, User } from '../types'
+import { Villa, VillaVote, Availability, Activity, User, Invitation } from '../types'
 
 // ============ DEMO DATA ============
 
@@ -94,6 +94,14 @@ let demoVotes = [...DEMO_VOTES]
 let demoAvailability = [...DEMO_AVAILABILITY]
 let demoActivities = [...DEMO_ACTIVITIES]
 
+// Demo invitations - users who haven't set their password yet
+const DEMO_INVITATIONS: Invitation[] = [
+  { username: 'new_user', displayName: 'New User', role: 'user', claimed: false },
+  { username: 'another_guest', displayName: 'Another Guest', role: 'user', claimed: false },
+]
+
+let demoInvitations = [...DEMO_INVITATIONS]
+
 // Subscribers for demo mode reactivity
 type Subscriber<T> = (data: T[]) => void
 const subscribers: Record<string, Set<Subscriber<unknown>>> = {
@@ -102,6 +110,7 @@ const subscribers: Record<string, Set<Subscriber<unknown>>> = {
   availability: new Set(),
   activities: new Set(),
   users: new Set(),
+  invitations: new Set(),
 }
 
 function notifySubscribers(collectionName: string) {
@@ -116,6 +125,7 @@ function getDemoData(collectionName: string): unknown[] {
     case 'availability': return demoAvailability
     case 'activities': return demoActivities
     case 'users': return DEMO_USERS
+    case 'invitations': return demoInvitations
     default: return []
   }
 }
@@ -362,4 +372,163 @@ export function useUsers() {
 export function useUserCount() {
   const { data: users, loading } = useUsers()
   return { count: users.length, loading }
+}
+
+// ============ INVITATIONS ============
+
+import { getDoc } from 'firebase/firestore'
+
+/**
+ * Check if a username has an unclaimed invitation
+ * Returns the invitation if found and unclaimed, null otherwise
+ */
+export async function checkInvitation(username: string): Promise<Invitation | null> {
+  const normalizedUsername = username.toLowerCase().replace(/\s+/g, '_')
+  
+  if (isDemoMode) {
+    const invitation = demoInvitations.find(
+      inv => inv.username.toLowerCase() === normalizedUsername && !inv.claimed
+    )
+    return invitation || null
+  }
+
+  try {
+    const invitationDoc = await getDoc(doc(db, 'invitations', normalizedUsername))
+    if (invitationDoc.exists()) {
+      const data = invitationDoc.data() as Invitation
+      if (!data.claimed) {
+        return { ...data, username: normalizedUsername }
+      }
+    }
+    return null
+  } catch (err) {
+    console.error('Error checking invitation:', err)
+    return null
+  }
+}
+
+/**
+ * Mark an invitation as claimed after user sets their password
+ */
+export async function claimInvitation(username: string): Promise<void> {
+  const normalizedUsername = username.toLowerCase().replace(/\s+/g, '_')
+  
+  if (isDemoMode) {
+    demoInvitations = demoInvitations.map(inv =>
+      inv.username.toLowerCase() === normalizedUsername
+        ? { ...inv, claimed: true, claimedAt: new Date() }
+        : inv
+    )
+    notifySubscribers('invitations')
+    return
+  }
+
+  await updateDoc(doc(db, 'invitations', normalizedUsername), {
+    claimed: true,
+    claimedAt: new Date(),
+  })
+}
+
+/**
+ * Create a user profile in Firestore after they claim their invitation
+ */
+export async function createUserProfile(user: User): Promise<void> {
+  if (isDemoMode) {
+    // In demo mode, just add to demo users
+    DEMO_USERS.push(user)
+    notifySubscribers('users')
+    return
+  }
+
+  await setDoc(doc(db, 'users', user.uid), user)
+}
+
+/**
+ * Add a new invitation (admin only)
+ */
+export async function addInvitation(invitation: Omit<Invitation, 'claimed'>): Promise<void> {
+  const normalizedUsername = invitation.username.toLowerCase().replace(/\s+/g, '_')
+  
+  if (isDemoMode) {
+    demoInvitations.push({
+      ...invitation,
+      username: normalizedUsername,
+      claimed: false,
+    })
+    notifySubscribers('invitations')
+    return
+  }
+
+  await setDoc(doc(db, 'invitations', normalizedUsername), {
+    ...invitation,
+    username: normalizedUsername,
+    claimed: false,
+  })
+}
+
+/**
+ * Get all invitations (admin only)
+ */
+export function useInvitations() {
+  const [data, setData] = useState<Invitation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (isDemoMode) {
+      setData(demoInvitations)
+      setLoading(false)
+
+      const callback = (newData: unknown) => setData(newData as Invitation[])
+      subscribers['invitations']?.add(callback as Subscriber<unknown>)
+
+      return () => {
+        subscribers['invitations']?.delete(callback as Subscriber<unknown>)
+      }
+    }
+
+    try {
+      const q = query(collection(db, 'invitations'))
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((doc) => ({
+            username: doc.id,
+            ...doc.data(),
+          })) as Invitation[]
+          setData(items)
+          setLoading(false)
+        },
+        (err) => {
+          setError(err)
+          setLoading(false)
+        }
+      )
+
+      return () => unsubscribe()
+    } catch (err) {
+      console.error('Firestore error:', err)
+      setError(err as Error)
+      setLoading(false)
+    }
+  }, [])
+
+  return { data, loading, error }
+}
+
+/**
+ * Delete an invitation (admin only)
+ */
+export async function deleteInvitation(username: string): Promise<void> {
+  const normalizedUsername = username.toLowerCase().replace(/\s+/g, '_')
+  
+  if (isDemoMode) {
+    demoInvitations = demoInvitations.filter(
+      inv => inv.username.toLowerCase() !== normalizedUsername
+    )
+    notifySubscribers('invitations')
+    return
+  }
+
+  await deleteDoc(doc(db, 'invitations', normalizedUsername))
 }

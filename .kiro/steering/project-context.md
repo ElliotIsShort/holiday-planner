@@ -168,23 +168,44 @@ interface Activity {
 }
 ```
 
+### Invitation
+```typescript
+interface Invitation {
+  username: string        // Login identifier (e.g., "alex_s")
+  displayName: string     // Shown in UI (e.g., "Alex Smith")
+  role: UserRole          // 'admin' or 'user'
+  claimed: boolean        // Whether the user has set their password
+  claimedAt?: Date        // When the invitation was claimed
+}
+```
+
 ---
 
 ## Features
 
 ### 1. Authentication (LoginPage)
-- Username/password login (no visible email)
+- **Two-step login flow:**
+  1. User enters username
+  2. If unclaimed invitation exists → password setup flow
+  3. If existing user → password login flow
 - Usernames converted to synthetic emails: `admin` → `admin@group-trip.internal`
 - Demo mode auto-activates when Firebase config is missing
+- **First-time users** set their own password (no admin-set passwords needed)
 
-### 2. Dashboard (DashboardPage)
+### 2. Password Management (Layout)
+- User menu dropdown in header (click username)
+- **Change Password** option opens modal
+- Requires current password for security (reauthentication)
+- Password requirements: minimum 6 characters
+
+### 3. Dashboard (DashboardPage)
 - Stats overview: group size, villas listed, votes cast, availability submitted
 - Leading villa (highest score without vetos)
 - Best dates (most people available)
 - Popular activities (most upvotes)
 - Budget info display
 
-### 3. Villa Showcase & Voting (VillasPage)
+### 4. Villa Showcase & Voting (VillasPage)
 - Villa cards with image, specs, location, notes, source link
 - **Budget indicator:** Green badge if ≤£350/person, red if over
 - **Voting buttons:**
@@ -194,14 +215,14 @@ interface Activity {
 - Vote breakdown display (count per type)
 - **Admin only:** Add/delete villas via modal form
 
-### 4. Availability Heatmap (AvailabilityPage)
+### 5. Availability Heatmap (AvailabilityPage)
 - Calendar grid: June–September 2027
 - Click dates to toggle availability
 - **Heatmap colors:** Darker green = more people free
 - Sidebar: Best dates, who's submitted, your selection count
 - Save button persists to Firestore
 
-### 5. Activity Pitchboard (ActivitiesPage)
+### 6. Activity Pitchboard (ActivitiesPage)
 - Anyone can propose activities
 - "Count Me In" toggle for interest
 - Shows interested count and names
@@ -211,11 +232,29 @@ interface Activity {
 
 ## Authentication Flow
 
-1. User enters username + password on login page
-2. `usernameToEmail()` converts username to synthetic email
-3. `signInWithEmailAndPassword()` authenticates with Firebase Auth
-4. On success, `onAuthStateChanged` triggers profile fetch from `users` collection
-5. User profile stored in AuthContext, accessible via `useAuth()` hook
+### First-Time User (Invitation Flow)
+1. Admin creates invitation in Firestore `invitations` collection (username, displayName, role)
+2. User enters username on login page
+3. App checks `invitations` collection for unclaimed invitation
+4. If found, user is prompted to create a password
+5. App creates Firebase Auth account with `createUserWithEmailAndPassword()`
+6. App creates user profile in `users` collection
+7. Invitation is marked as `claimed: true`
+8. User is automatically signed in
+
+### Returning User (Login Flow)
+1. User enters username on login page
+2. App checks for unclaimed invitation (none found)
+3. User enters password
+4. `signInWithEmailAndPassword()` authenticates with Firebase Auth
+5. `onAuthStateChanged` triggers profile fetch from `users` collection
+6. User profile stored in AuthContext, accessible via `useAuth()` hook
+
+### Password Change
+1. User clicks their name in header → "Change Password"
+2. User enters current password (for reauthentication)
+3. User enters and confirms new password
+4. App calls `reauthenticateWithCredential()` then `updatePassword()`
 
 ### Demo Mode
 When `VITE_FIREBASE_API_KEY` is not set:
@@ -230,7 +269,8 @@ When `VITE_FIREBASE_API_KEY` is not set:
 
 | Collection | Document ID | Access |
 |------------|-------------|--------|
-| `users` | Firebase Auth UID | Read: authenticated, Write: admin only |
+| `invitations` | Username (normalized) | Read: anyone (for login flow), Write: admin only |
+| `users` | Firebase Auth UID | Read: authenticated, Create: own profile, Update/Delete: admin only |
 | `villas` | Auto-generated | Read: authenticated, Write: admin only |
 | `villaVotes` | `{villaId}_{userId}` | Read: authenticated, Write: own votes only |
 | `availability` | User's UID | Read: authenticated, Write: own only |
@@ -369,7 +409,7 @@ Required secrets in GitHub Actions:
 1. **No email notifications** - Users must check the site for updates
 2. **No image upload** - Villa images must be URLs (e.g., from Unsplash)
 3. **Single trip only** - No multi-trip support
-4. **Manual user creation** - Admin must create Firebase Auth users manually
+4. **No admin UI for invitations** - Admin must create invitations directly in Firestore Console
 
 ---
 
@@ -381,3 +421,4 @@ Required secrets in GitHub Actions:
 - [ ] Itinerary builder with dates
 - [ ] Comments/discussion on villas
 - [ ] Export to PDF/calendar
+- [ ] Admin UI for managing invitations

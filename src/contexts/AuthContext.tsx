@@ -4,10 +4,15 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db, usernameToEmail, isDemoMode } from '../config/firebase'
-import { User } from '../types'
+import { User, Invitation } from '../types'
+import { checkInvitation, claimInvitation, createUserProfile } from '../hooks/useFirestore'
 
 // Demo user for testing without Firebase
 const DEMO_USER: User = {
@@ -26,6 +31,9 @@ interface AuthContextType {
   error: string | null
   signIn: (username: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  checkUserInvitation: (username: string) => Promise<Invitation | null>
+  claimInvitationAndCreateAccount: (username: string, password: string, invitation: Invitation) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   isAdmin: boolean
   isDemoMode: boolean
 }
@@ -125,6 +133,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Check if a username has an unclaimed invitation (for first-time login)
+  const checkUserInvitation = async (username: string): Promise<Invitation | null> => {
+    return await checkInvitation(username)
+  }
+
+  // Create a new account from an invitation
+  const claimInvitationAndCreateAccount = async (
+    username: string, 
+    password: string, 
+    invitation: Invitation
+  ) => {
+    setError(null)
+    setLoading(true)
+
+    try {
+      const email = usernameToEmail(username)
+
+      if (isDemoMode) {
+        // Demo mode: simulate account creation
+        const newUser: User = {
+          uid: `user_${Date.now()}`,
+          username: invitation.username,
+          displayName: invitation.displayName,
+          role: invitation.role,
+          budgetCap: 350,
+          preferences: [],
+        }
+        await claimInvitation(username)
+        await createUserProfile(newUser)
+        setUser(newUser)
+        return
+      }
+
+      // Create Firebase Auth account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      
+      // Create user profile in Firestore
+      const newUser: User = {
+        uid: userCredential.user.uid,
+        username: invitation.username,
+        displayName: invitation.displayName,
+        role: invitation.role,
+        budgetCap: 350,
+        preferences: [],
+      }
+      
+      await createUserProfile(newUser)
+      
+      // Mark invitation as claimed
+      await claimInvitation(username)
+      
+      // User will be set automatically via onAuthStateChanged
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Account creation failed'
+      setError(message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Change password for logged-in user
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (isDemoMode) {
+      // Demo mode: simulate password change
+      return
+    }
+
+    if (!firebaseUser || !user) {
+      throw new Error('No user logged in')
+    }
+
+    setError(null)
+
+    try {
+      // Reauthenticate first (required for security-sensitive operations)
+      const email = usernameToEmail(user.username)
+      const credential = EmailAuthProvider.credential(email, currentPassword)
+      await reauthenticateWithCredential(firebaseUser, credential)
+
+      // Update password
+      await updatePassword(firebaseUser, newPassword)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Password change failed'
+      setError(message)
+      throw err
+    }
+  }
+
   const isAdmin = user?.role === 'admin'
 
   const value: AuthContextType = {
@@ -134,6 +231,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     signIn,
     signOut,
+    checkUserInvitation,
+    claimInvitationAndCreateAccount,
+    changePassword,
     isAdmin,
     isDemoMode,
   }

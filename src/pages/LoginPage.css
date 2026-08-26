@@ -91,3 +91,41 @@
   font-size: 0.875rem;
   margin: 0;
 }
+
+/* Step navigation */
+.step-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0;
+  margin-bottom: var(--spacing-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.welcome-text {
+  color: var(--text);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.welcome-text strong {
+  color: var(--primary);
+}
+
+.setup-instruction {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: var(--spacing-xs) 0 0 0;
+}

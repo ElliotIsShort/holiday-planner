@@ -19,12 +19,23 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Invitations collection - for first-time user setup
+    match /invitations/{username} {
+      // Anyone can read invitations (needed for login flow to check if invitation exists)
+      // This is safe because invitations only contain username, displayName, role - no sensitive data
+      allow read: if true;
+      // Only admins can create/update/delete invitations
+      allow create, update, delete: if isAdmin();
+    }
+    
     // Users collection
     match /users/{userId} {
       // Any authenticated user can read user profiles
       allow read: if isAuthenticated();
-      // Only admins can create/update/delete user profiles
-      allow create, update, delete: if isAdmin();
+      // Users can create their own profile (when claiming invitation)
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Only admins can update/delete user profiles
+      allow update, delete: if isAdmin();
     }
     
     // Villas collection

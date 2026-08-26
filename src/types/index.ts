@@ -67,3 +67,12 @@ export const GROUP_SIZE = {
   MAX: 20,
   DEFAULT: 17, // Middle estimate for calculations
 }
+
+// Invitation for first-time user setup
+export interface Invitation {
+  username: string        // Login identifier (e.g., "alex_s")
+  displayName: string     // Shown in UI (e.g., "Alex Smith")
+  role: UserRole          // 'admin' or 'user'
+  claimed: boolean        // Whether the user has set their password
+  claimedAt?: Date        // When the invitation was claimed
+}
