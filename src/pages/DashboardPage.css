@@ -1,0 +1,199 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.page-header h1 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1.75rem;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-xs);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.dashboard-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-card h2 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.empty-state {
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+/* Top Villa */
+.top-villa {
+  text-align: center;
+}
+
+.top-villa-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.top-villa h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1rem;
+}
+
+.villa-location {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.villa-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.villa-stats .score {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.villa-stats .cost {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.villa-stats .cost.under-budget {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.villa-stats .cost.over-budget {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* Date List */
+.date-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.date-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.date-list li:last-child {
+  border-bottom: none;
+}
+
+.date-list .date {
+  font-weight: 500;
+}
+
+.date-list .count {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Activity List */
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-list li:last-child {
+  border-bottom: none;
+}
+
+.activity-title {
+  font-weight: 500;
+}
+
+.activity-votes {
+  background: var(--background);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Budget Info */
+.budget-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.budget-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budget-item .label {
+  color: var(--text-secondary);
+}
+
+.budget-item .value {
+  font-weight: 600;
+  color: var(--text);
+}
