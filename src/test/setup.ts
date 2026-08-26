@@ -10,7 +10,7 @@ vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => ({})),
   signInWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(),
-  onAuthStateChanged: vi.fn((auth, callback) => {
+  onAuthStateChanged: vi.fn((_auth: unknown, callback: (user: null) => void) => {
     // Immediately call with null (not logged in)
     callback(null)
     return vi.fn() // unsubscribe function
@@ -25,7 +25,7 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(),
   where: vi.fn(),
   orderBy: vi.fn(),
-  onSnapshot: vi.fn((query, callback) => {
+  onSnapshot: vi.fn((_query: unknown, callback: (snapshot: { docs: never[] }) => void) => {
     callback({ docs: [] })
     return vi.fn() // unsubscribe function
   }),
